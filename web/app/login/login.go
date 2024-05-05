@@ -37,7 +37,7 @@ func Handler(auth *authenticator.Authenticator) gin.HandlerFunc {
 			// originally I was missing this, and I was getting an opaque token, so I couldn't verify the access token
 			// I was getting an opaque token because I was missing the audience
 			// by adding an api named `https://api.tb-sb.com` at https://manage.auth0.com/dashboard/us/tg-sb/apis
-			// i was able to set the audience param in the authorization request to the 
+			// i was able to set the audience param in the authorization request to the
 			// authorization endpoint (docs found here https://auth0.com/docs/api/authentication#authorize47)
 			// you can obtain this information by looking at the `authorization_endpoint` of my tennant's well known config
 			// https://tg-sb.us.auth0.com/.well-known/openid-configuration

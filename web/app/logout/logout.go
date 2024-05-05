@@ -16,19 +16,19 @@ func Handler(ctx *gin.Context) {
 		ctx.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	
+
 	scheme := "http"
 	if ctx.Request.TLS != nil {
 		scheme = "https"
 	}
-	
+
 	// how is this removing the session cookie?
 	returnTo, err := url.Parse(scheme + "://" + ctx.Request.Host)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	
+
 	parameters := url.Values{}
 	// https://auth0.com/docs/authenticate/login/logout/log-users-out-of-auth0#oidc-logout-endpoint-parameters
 	parameters.Add("post_logout_redirect_uri", returnTo.String())

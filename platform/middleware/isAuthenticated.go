@@ -25,7 +25,7 @@ func IsAuthenticated(auth *authenticator.Authenticator) gin.HandlerFunc {
 			return
 		}
 		fmt.Printf("Access Token: %s\n", accessTokenString)
-		tok, err := auth.VerifyAccessToken(ctx.Request.Context(), accessTokenString)
+		tok, err := auth.VerifyToken(ctx.Request.Context(), accessTokenString)
 		if err != nil {
 			fmt.Printf("Error verifying access token: %s\n", err.Error())
 			ctx.AbortWithStatus(http.StatusUnauthorized)

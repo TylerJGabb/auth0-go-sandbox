@@ -2,14 +2,11 @@ package authenticator
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"net/http"
+	"fmt"
 	"os"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/go-jose/go-jose"
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/oauth2"
 )
@@ -18,13 +15,17 @@ import (
 type Authenticator struct {
 	*oidc.Provider
 	oauth2.Config
+	JwtKeyGetter
 }
 
 // New instantiates the *Authenticator.
 func New() (*Authenticator, error) {
+	domain := os.Getenv("AUTH0_DOMAIN")
+	issuer := fmt.Sprintf("https://%s/", domain)
+	wellKnownUrl := fmt.Sprintf("https://%s/.well-known/jwks.json", domain)
 	provider, err := oidc.NewProvider(
 		context.Background(),
-		"https://"+os.Getenv("AUTH0_DOMAIN")+"/",
+		issuer,
 	)
 	if err != nil {
 		return nil, err
@@ -38,9 +39,11 @@ func New() (*Authenticator, error) {
 		Scopes:       []string{oidc.ScopeOpenID, "profile"},
 	}
 
+	keyGetter := NewKeyGetter(wellKnownUrl)
 	return &Authenticator{
-		Provider: provider,
-		Config:   conf,
+		Provider:     provider,
+		Config:       conf,
+		JwtKeyGetter: keyGetter,
 	}, nil
 }
 
@@ -58,29 +61,6 @@ func (a *Authenticator) VerifyIDToken(ctx context.Context, token *oauth2.Token) 
 	return a.Verifier(oidcConfig).Verify(ctx, rawIDToken)
 }
 
-func (a *Authenticator) VerifyAccessToken(ctx context.Context, token string) (*jwt.Token, error) {
-	return jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		wellKnownUrl := "https://"+os.Getenv("AUTH0_DOMAIN")+"/.well-known/jwks.json"
-		client := http.Client{}
-		resp, err := client.Get(wellKnownUrl)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-		
-		keySet := jose.JSONWebKeySet{}
-		body , err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		err = json.Unmarshal(body, &keySet)
-		if err != nil {
-			return nil, err
-		}
-		if len(keySet.Keys) == 0 {
-			return nil, errors.New("No keys found in JWKS")
-		}
-		return keySet.Keys[0].Key, nil	
-	})
-
+func (a *Authenticator) VerifyToken(ctx context.Context, token string) (*jwt.Token, error) {
+	return jwt.Parse(token, a.JwtKeyGetter.GetKey)
 }

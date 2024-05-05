@@ -2,10 +2,15 @@ package authenticator
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/go-jose/go-jose"
+	"github.com/golang-jwt/jwt"
 	"golang.org/x/oauth2"
 )
 
@@ -51,4 +56,31 @@ func (a *Authenticator) VerifyIDToken(ctx context.Context, token *oauth2.Token) 
 	}
 
 	return a.Verifier(oidcConfig).Verify(ctx, rawIDToken)
+}
+
+func (a *Authenticator) VerifyAccessToken(ctx context.Context, token string) (*jwt.Token, error) {
+	return jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		wellKnownUrl := "https://"+os.Getenv("AUTH0_DOMAIN")+"/.well-known/jwks.json"
+		client := http.Client{}
+		resp, err := client.Get(wellKnownUrl)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		
+		keySet := jose.JSONWebKeySet{}
+		body , err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(body, &keySet)
+		if err != nil {
+			return nil, err
+		}
+		if len(keySet.Keys) == 0 {
+			return nil, errors.New("No keys found in JWKS")
+		}
+		return keySet.Keys[0].Key, nil	
+	})
+
 }

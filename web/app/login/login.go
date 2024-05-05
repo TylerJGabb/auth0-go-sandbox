@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2"
 
 	"01-Login/platform/authenticator"
 )
@@ -30,7 +31,18 @@ func Handler(auth *authenticator.Authenticator) gin.HandlerFunc {
 			return
 		}
 
-		ctx.Redirect(http.StatusTemporaryRedirect, auth.AuthCodeURL(state))
+		ctx.Redirect(http.StatusTemporaryRedirect, auth.AuthCodeURL(
+			state,
+			// https://community.auth0.com/t/why-is-my-access-token-not-a-jwt-opaque-token/31028
+			// originally I was missing this, and I was getting an opaque token, so I couldn't verify the access token
+			// I was getting an opaque token because I was missing the audience
+			// by adding an api named `https://api.tb-sb.com` at https://manage.auth0.com/dashboard/us/tg-sb/apis
+			// i was able to set the audience param in the authorization request to the 
+			// authorization endpoint (docs found here https://auth0.com/docs/api/authentication#authorize47)
+			// you can obtain this information by looking at the `authorization_endpoint` of my tennant's well known config
+			// https://tg-sb.us.auth0.com/.well-known/openid-configuration
+			oauth2.SetAuthURLParam("audience", "https://api.tg-sb.com"),
+		))
 	}
 }
 

@@ -33,7 +33,7 @@ func New(auth *authenticator.Authenticator) *gin.Engine {
 	router.GET("/", home.Handler)
 	router.GET("/login", login.Handler(auth))
 	router.GET("/callback", callback.Handler(auth))
-	router.GET("/user", middleware.IsAuthenticated, user.Handler)
+	router.GET("/user", middleware.IsAuthenticated(auth), user.Handler)
 	router.GET("/logout", logout.Handler)
 
 	return router
